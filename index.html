@@ -3,121 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enterprise Node Monitor v3.0</title>
+    <title>Enterprise Node Monitor v3.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        body { background-color: #0f0c14; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .glass { background: rgba(30, 25, 35, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(139, 92, 246, 0.2); }
         
-        body { 
-            background-color: #0f0c14; 
-            color: #e2e8f0; 
-            font-family: 'JetBrains Mono', monospace; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-
-        .glass { 
-            background: rgba(30, 25, 35, 0.95); 
-            backdrop-filter: blur(12px); 
-            border: 1px solid rgba(139, 92, 246, 0.2); 
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-
-        /* Status Glow Effects */
+        /* Status Glows */
         .glow-green { border-color: #22c55e; box-shadow: 0 0 20px rgba(34, 197, 94, 0.2); }
         .glow-blue { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
-        
+        .glow-red { border-color: #ef4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.2); }
+
         /* The Alarm Animation */
-        .alarm-active { 
-            animation: critical-pulse 1s infinite; 
-            border-color: #ef4444 !important; 
-        }
-
+        .alarm-active { animation: critical-pulse 1.5s infinite; border-color: #ef4444 !important; }
         @keyframes critical-pulse {
-            0% { background-color: rgba(30, 25, 35, 0.95); }
-            50% { background-color: rgba(80, 20, 20, 1); }
-            100% { background-color: rgba(30, 25, 35, 0.95); }
-        }
-
-        .metric-card {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s ease;
-        }
-
-        .scanline {
-            width: 100%; height: 100%; position: absolute; top: 0; left: 0;
-            background: linear-gradient(to bottom, transparent 50%, rgba(0, 0, 0, .2) 50%);
-            background-size: 100% 4px; pointer-events: none; opacity: 0.1;
+            0%, 100% { background-color: rgba(30, 25, 35, 0.95); }
+            50% { background-color: rgba(60, 20, 20, 1); }
         }
     </style>
 </head>
 <body>
 
     <div id="app-container" class="glass w-full max-w-md rounded-3xl p-8 relative overflow-hidden transition-all duration-500">
-        <div class="scanline"></div>
-
-        <div class="flex justify-between items-start mb-12 relative z-20">
+        <div class="flex justify-between items-start mb-10">
             <div>
-                <p class="text-purple-500 text-[10px] font-bold uppercase tracking-[0.3em] mb-1">Network Infrastructure</p>
-                <h1 class="text-2xl font-bold tracking-tighter">NODE-01 <span class="text-gray-600">/ ALPHA</span></h1>
+                <p class="text-purple-500 text-[10px] font-bold uppercase tracking-[0.3em] mb-1">System Watchdog</p>
+                <h1 class="text-2xl font-bold tracking-tighter">NODE-01</h1>
             </div>
-            <div id="icon-container" class="p-3 rounded-2xl bg-white/5 border border-white/10 shadow-inner">
-                </div>
+            <div id="icon-container" class="p-3 rounded-2xl bg-white/5 border border-white/10"></div>
         </div>
 
-        <div class="flex flex-col items-center py-4 relative z-20">
-            <div id="display-status" class="text-4xl font-black tracking-tighter transition-all duration-150">
-                OFFLINE
-            </div>
-            <div id="sync-timer" class="text-[9px] text-gray-500 mt-2 font-bold uppercase tracking-widest">
-                Sync: Disconnected
-            </div>
+        <div class="flex flex-col items-center py-4">
+            <div id="display-status" class="text-4xl font-black tracking-tighter transition-all duration-150">READY</div>
+            <div id="sync-timer" class="text-[9px] text-gray-500 mt-2 font-bold uppercase tracking-widest">Awaiting Initialization...</div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4 mt-10 relative z-20">
-            <div class="metric-card p-4 rounded-2xl">
-                <span class="text-[9px] text-gray-500 font-bold uppercase block mb-1">Thermal</span>
-                <span id="temp-val" class="text-xl font-bold tracking-tight">--°C</span>
+        <div class="grid grid-cols-2 gap-4 mt-8">
+            <div class="bg-black/30 p-4 rounded-2xl border border-white/5">
+                <span class="text-[9px] text-gray-400 font-bold uppercase block mb-1">Temp</span>
+                <span id="temp-val" class="text-xl font-bold">--°C</span>
             </div>
-            <div class="metric-card p-4 rounded-2xl">
-                <span class="text-[9px] text-gray-500 font-bold uppercase block mb-1">Load</span>
-                <span id="power-val" class="text-xl font-bold tracking-tight">--W</span>
+            <div class="bg-black/30 p-4 rounded-2xl border border-white/5">
+                <span class="text-[9px] text-gray-400 font-bold uppercase block mb-1">Power</span>
+                <span id="power-val" class="text-xl font-bold">--W</span>
             </div>
-            <div class="metric-card p-4 rounded-2xl col-span-2">
-                <span class="text-[9px] text-gray-500 font-bold uppercase block mb-1">Uptime Counter</span>
-                <span id="uptime-val" class="text-xl font-bold tracking-tight text-blue-400">00:00:00</span>
+            <div class="bg-black/30 p-4 rounded-2xl border border-white/5 col-span-2">
+                <span class="text-[9px] text-gray-400 font-bold uppercase block mb-1">Uptime</span>
+                <span id="uptime-val" class="text-xl font-bold text-blue-400">00:00:00</span>
             </div>
         </div>
 
-        <div class="mt-10 space-y-4 relative z-20">
-            <button id="start-btn" class="w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold rounded-2xl transition-all uppercase text-xs tracking-[0.2em]">
-                Initialize System
-            </button>
-            <div class="flex items-center justify-between px-2">
-                <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Audio Security</span>
-                <button id="alarm-toggle" class="text-[10px] text-red-500 font-bold uppercase hover:text-red-400 transition-colors">
-                    [ ALARM MUTED ]
-                </button>
-            </div>
+        <button id="start-btn" class="mt-10 w-full py-4 bg-purple-600/20 border border-purple-500/50 text-white font-bold rounded-2xl uppercase text-xs tracking-[0.2em]">Start Monitor</button>
+        <div class="mt-4 flex justify-between px-2">
+            <span class="text-[9px] text-gray-500 font-bold uppercase">Emergency Alarm</span>
+            <button id="alarm-toggle" class="text-[10px] text-red-500 font-bold uppercase">[ Muted ]</button>
         </div>
     </div>
 
 <script>
     const API_URL = 'https://689cc60cce755fe69786fca8.mockapi.io/serverinfo';
     
-    // Different Synths for different "Moods"
-    const pulseSynth = new Tone.MembraneSynth({ volume: -10 }).toDestination();
-    const alarmSynth = new Tone.Oscillator(800, "square").toDestination();
-    const infoSynth = new Tone.PolySynth(Tone.Synth).toDestination();
+    // Original Sonar Alarm Sound
+    const heartbeatSynth = new Tone.MembraneSynth({ volume: -10 }).toDestination();
+    const alarmOsc = new Tone.Oscillator(800, "square").toDestination();
 
     let isRunning = false;
     let alarmArmed = false;
-    let soundLoop = null;
+    let alarmInterval = null;
+
+    const ICONS = {
+        ONLINE: `<svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`,
+        CRITICAL: `<svg class="w-6 h-6 text-red-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`,
+        INFO: `<svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
+    };
+
+    function playSonarAlarm(start) {
+        if (start && alarmArmed && !alarmInterval) {
+            alarmInterval = setInterval(() => {
+                alarmOsc.frequency.value = 800;
+                alarmOsc.start().stop("+0.1");
+                setTimeout(() => {
+                    alarmOsc.frequency.value = 600;
+                    alarmOsc.start().stop("+0.1");
+                }, 200);
+            }, 1000); // Sonar "beep-beep" every second
+        } else if (!start) {
+            clearInterval(alarmInterval);
+            alarmInterval = null;
+        }
+    }
 
     async function updateMonitor() {
         try {
@@ -130,69 +106,66 @@
             const iconBox = document.getElementById('icon-container');
             
             const timeDiff = Date.now() - parseInt(server.HARTHBEAT);
-            const statusClean = server.STATUS.toLowerCase();
+            const statusType = server.STATUS.toLowerCase();
 
-            // Clear previous audio loops when data refreshes
-            clearInterval(soundLoop);
-            soundLoop = null;
+            document.getElementById('temp-val').innerText = server.currenttemp;
+            document.getElementById('power-val').innerText = server.powerconcumptionperH;
+            document.getElementById('uptime-val').innerText = server.uptime;
+            document.getElementById('sync-timer').innerText = `Pulse Offset: ${timeDiff}ms`;
 
-            // 1. CRITICAL: PULSE LOST (Internet/Crash)
+            // 1. Check for NO PULSE first (Highest Priority)
             if (timeDiff > 10000) {
-                statusLabel.innerText = "PULSE LOST";
+                statusLabel.innerText = "NO PULSE";
+                statusLabel.className = "text-red-500 font-black tracking-tighter transition-all duration-150";
                 iconBox.innerHTML = ICONS.CRITICAL;
-                card.className = "glass w-full max-w-md rounded-2xl p-8 relative overflow-hidden alarm-active";
-                
-                if (alarmArmed) {
-                    soundLoop = setInterval(() => {
-                        alarmSynth.frequency.value = 800;
-                        alarmSynth.start().stop("+0.1");
-                    }, 500); // Fast urgent beep
-                }
+                card.className = "glass w-full max-w-md rounded-3xl p-8 relative overflow-hidden alarm-active";
+                playSonarAlarm(true);
             } 
-            
-            // 2. MAINTENANCE (Intentional)
-            else if (statusClean === 'maintenance') {
-                statusLabel.innerText = "MAINTENANCE";
-                iconBox.innerHTML = ICONS.MAINT;
-                card.className = "glass w-full max-w-md rounded-2xl p-8 relative overflow-hidden status-glow-blue";
-                
-                if (alarmArmed) {
-                    // Soft double-chirp every 5 seconds
-                    soundLoop = setInterval(() => {
-                        infoSynth.triggerAttackRelease(["C4", "E4"], "16n");
-                    }, 5000);
-                }
-            }
+            // 2. If Pulse is fine, check specific STATUS
+            else {
+                playSonarAlarm(false); // Stop alarm if pulse returns
 
-            // 3. OFFLINE (Intentional Hard Switch)
-            else if (statusClean === 'offline') {
-                statusLabel.innerText = "NODE OFFLINE";
-                iconBox.innerHTML = ICONS.OFFLINE;
-                card.className = "glass w-full max-w-md rounded-2xl p-8 relative overflow-hidden border-gray-600";
-                
-                if (alarmArmed) {
-                    // Low steady drone every 3 seconds
-                    soundLoop = setInterval(() => {
-                        pulseSynth.triggerAttackRelease("G0", "8n");
-                    }, 3000);
+                if (statusType === 'maintenance') {
+                    statusLabel.innerText = "MAINTENANCE";
+                    statusLabel.className = "text-blue-400 font-black tracking-tighter transition-all duration-150";
+                    iconBox.innerHTML = ICONS.INFO;
+                    card.className = "glass w-full max-w-md rounded-3xl p-8 relative overflow-hidden glow-blue";
+                } 
+                else if (statusType === 'offline') {
+                    statusLabel.innerText = "OFFLINE";
+                    statusLabel.className = "text-gray-500 font-black tracking-tighter transition-all duration-150";
+                    iconBox.innerHTML = ICONS.INFO;
+                    card.className = "glass w-full max-w-md rounded-3xl p-8 relative overflow-hidden glow-red";
                 }
-            }
-
-            // 4. STABLE (Normal)
-            else if (statusClean === 'online') {
-                statusLabel.innerText = "STABLE";
-                iconBox.innerHTML = ICONS.ONLINE;
-                card.className = "glass w-full max-w-md rounded-2xl p-8 relative overflow-hidden status-glow-green";
-                
-                if(isRunning) pulseSynth.triggerAttackRelease("C1", "32n");
+                else if (statusType === 'online') {
+                    statusLabel.innerText = "ONLINE";
+                    statusLabel.className = "text-green-400 font-black tracking-tighter transition-all duration-150";
+                    iconBox.innerHTML = ICONS.ONLINE;
+                    card.className = "glass w-full max-w-md rounded-3xl p-8 relative overflow-hidden glow-green";
+                    if(isRunning) heartbeatSynth.triggerAttackRelease("C1", "32n");
+                }
             }
 
         } catch (e) {
-            statusLabel.innerText = "API ERROR";
+            document.getElementById('display-status').innerText = "API ERROR";
         }
     }
-    
-    // ... rest of the click listeners remain the same ...
+
+    document.getElementById('start-btn').addEventListener('click', async () => {
+        if (!isRunning) {
+            await Tone.start();
+            isRunning = true;
+            document.getElementById('start-btn').innerText = "MONITORING ACTIVE";
+            setInterval(updateMonitor, 2000);
+            updateMonitor();
+        }
+    });
+
+    document.getElementById('alarm-toggle').addEventListener('click', () => {
+        alarmArmed = !alarmArmed;
+        document.getElementById('alarm-toggle').innerText = alarmArmed ? "[ Armed ]" : "[ Muted ]";
+        document.getElementById('alarm-toggle').className = alarmArmed ? "text-[10px] text-green-500 font-bold uppercase" : "text-[10px] text-red-500 font-bold uppercase";
+    });
 </script>
 </body>
 </html>
