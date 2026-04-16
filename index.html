@@ -3,25 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enterprise Node Monitor v3.1</title>
+    <title>Enterprise Node Monitor v3.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
         body { background-color: #0f0c14; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
         .glass { background: rgba(30, 25, 35, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(139, 92, 246, 0.2); }
-        
-        /* Status Glows */
         .glow-green { border-color: #22c55e; box-shadow: 0 0 20px rgba(34, 197, 94, 0.2); }
         .glow-blue { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
         .glow-red { border-color: #ef4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.2); }
-
-        /* The Alarm Animation */
         .alarm-active { animation: critical-pulse 1.5s infinite; border-color: #ef4444 !important; }
-        @keyframes critical-pulse {
-            0%, 100% { background-color: rgba(30, 25, 35, 0.95); }
-            50% { background-color: rgba(60, 20, 20, 1); }
-        }
+        @keyframes critical-pulse { 0%, 100% { background-color: rgba(30, 25, 35, 0.95); } 50% { background-color: rgba(60, 20, 20, 1); } }
+        .btn-toggle { font-size: 10px; font-weight: bold; text-transform: uppercase; cursor: pointer; transition: opacity 0.2s; }
+        .btn-toggle:hover { opacity: 0.8; }
     </style>
 </head>
 <body>
@@ -56,21 +51,28 @@
         </div>
 
         <button id="start-btn" class="mt-10 w-full py-4 bg-purple-600/20 border border-purple-500/50 text-white font-bold rounded-2xl uppercase text-xs tracking-[0.2em]">Start Monitor</button>
-        <div class="mt-4 flex justify-between px-2">
-            <span class="text-[9px] text-gray-500 font-bold uppercase">Emergency Alarm</span>
-            <button id="alarm-toggle" class="text-[10px] text-red-500 font-bold uppercase">[ Muted ]</button>
+        
+        <div class="mt-6 space-y-2 border-t border-white/5 pt-4">
+            <div class="flex justify-between px-2">
+                <span class="text-[9px] text-gray-500 font-bold uppercase">Heartbeat Sound</span>
+                <button id="heart-toggle" class="btn-toggle text-red-500">[ Off ]</button>
+            </div>
+            <div class="flex justify-between px-2">
+                <span class="text-[9px] text-gray-500 font-bold uppercase">Emergency Alarm</span>
+                <button id="alarm-toggle" class="btn-toggle text-red-500">[ Muted ]</button>
+            </div>
         </div>
     </div>
 
 <script>
     const API_URL = 'https://689cc60cce755fe69786fca8.mockapi.io/serverinfo';
     
-    // Original Sonar Alarm Sound
-    const heartbeatSynth = new Tone.MembraneSynth({ volume: -10 }).toDestination();
+    const heartbeatSynth = new Tone.MembraneSynth({ volume: -15 }).toDestination();
     const alarmOsc = new Tone.Oscillator(800, "square").toDestination();
 
     let isRunning = false;
     let alarmArmed = false;
+    let heartSoundEnabled = false;
     let alarmInterval = null;
 
     const ICONS = {
@@ -88,7 +90,7 @@
                     alarmOsc.frequency.value = 600;
                     alarmOsc.start().stop("+0.1");
                 }, 200);
-            }, 1000); // Sonar "beep-beep" every second
+            }, 1000);
         } else if (!start) {
             clearInterval(alarmInterval);
             alarmInterval = null;
@@ -100,11 +102,9 @@
             const response = await fetch(API_URL);
             const data = await response.json();
             const server = data[0];
-            
             const card = document.getElementById('app-container');
             const statusLabel = document.getElementById('display-status');
             const iconBox = document.getElementById('icon-container');
-            
             const timeDiff = Date.now() - parseInt(server.HARTHBEAT);
             const statusType = server.STATUS.toLowerCase();
 
@@ -113,42 +113,36 @@
             document.getElementById('uptime-val').innerText = server.uptime;
             document.getElementById('sync-timer').innerText = `Pulse Offset: ${timeDiff}ms`;
 
-            // 1. Check for NO PULSE first (Highest Priority)
             if (timeDiff > 10000) {
                 statusLabel.innerText = "NO PULSE";
-                statusLabel.className = "text-red-500 font-black tracking-tighter transition-all duration-150";
+                statusLabel.className = "text-red-500 font-black tracking-tighter mb-2";
                 iconBox.innerHTML = ICONS.CRITICAL;
                 card.className = "glass w-full max-w-md rounded-3xl p-8 relative overflow-hidden alarm-active";
                 playSonarAlarm(true);
             } 
-            // 2. If Pulse is fine, check specific STATUS
             else {
-                playSonarAlarm(false); // Stop alarm if pulse returns
-
+                playSonarAlarm(false);
                 if (statusType === 'maintenance') {
                     statusLabel.innerText = "MAINTENANCE";
-                    statusLabel.className = "text-blue-400 font-black tracking-tighter transition-all duration-150";
+                    statusLabel.className = "text-blue-400 font-black tracking-tighter";
                     iconBox.innerHTML = ICONS.INFO;
                     card.className = "glass w-full max-w-md rounded-3xl p-8 relative overflow-hidden glow-blue";
                 } 
                 else if (statusType === 'offline') {
                     statusLabel.innerText = "OFFLINE";
-                    statusLabel.className = "text-gray-500 font-black tracking-tighter transition-all duration-150";
+                    statusLabel.className = "text-gray-500 font-black tracking-tighter";
                     iconBox.innerHTML = ICONS.INFO;
                     card.className = "glass w-full max-w-md rounded-3xl p-8 relative overflow-hidden glow-red";
                 }
                 else if (statusType === 'online') {
                     statusLabel.innerText = "ONLINE";
-                    statusLabel.className = "text-green-400 font-black tracking-tighter transition-all duration-150";
+                    statusLabel.className = "text-green-400 font-black tracking-tighter";
                     iconBox.innerHTML = ICONS.ONLINE;
                     card.className = "glass w-full max-w-md rounded-3xl p-8 relative overflow-hidden glow-green";
-                    if(isRunning) heartbeatSynth.triggerAttackRelease("C1", "32n");
+                    if(isRunning && heartSoundEnabled) heartbeatSynth.triggerAttackRelease("C1", "32n");
                 }
             }
-
-        } catch (e) {
-            document.getElementById('display-status').innerText = "API ERROR";
-        }
+        } catch (e) { document.getElementById('display-status').innerText = "API ERROR"; }
     }
 
     document.getElementById('start-btn').addEventListener('click', async () => {
@@ -161,10 +155,18 @@
         }
     });
 
+    document.getElementById('heart-toggle').addEventListener('click', () => {
+        heartSoundEnabled = !heartSoundEnabled;
+        const btn = document.getElementById('heart-toggle');
+        btn.innerText = heartSoundEnabled ? "[ On ]" : "[ Off ]";
+        btn.className = heartSoundEnabled ? "btn-toggle text-green-500" : "btn-toggle text-red-500";
+    });
+
     document.getElementById('alarm-toggle').addEventListener('click', () => {
         alarmArmed = !alarmArmed;
-        document.getElementById('alarm-toggle').innerText = alarmArmed ? "[ Armed ]" : "[ Muted ]";
-        document.getElementById('alarm-toggle').className = alarmArmed ? "text-[10px] text-green-500 font-bold uppercase" : "text-[10px] text-red-500 font-bold uppercase";
+        const btn = document.getElementById('alarm-toggle');
+        btn.innerText = alarmArmed ? "[ Armed ]" : "[ Muted ]";
+        btn.className = alarmArmed ? "btn-toggle text-green-500" : "btn-toggle text-red-500";
     });
 </script>
 </body>
