@@ -88,75 +88,80 @@
     </div>
 
     <script>
-        const API_URL = 'https://689cc60cce755fe69786fca8.mockapi.io/serverinfo';
-        const synth = new Tone.MembraneSynth({
-            pitchDecay: 0.05,
-            octaves: 4,
-            oscillator: { type: "sine" }
-        }).toDestination();
+    const API_URL = 'https://689cc60cce755fe69786fca8.mockapi.io/serverinfo';
+    const synth = new Tone.MembraneSynth().toDestination();
+    let isRunning = false;
 
-        let isRunning = false;
+    async function updateMonitor() {
+        try {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            const server = data[0];
 
-        async function updateMonitor() {
-            try {
-                const response = await fetch(API_URL);
-                const data = await response.json();
-                const server = data[0]; // Get the first object in the array
-
-                // Update UI Text
-                document.getElementById('temp-val').innerText = server.currenttemp;
-                document.getElementById('power-val').innerText = server.powerconcumptionperH;
-                document.getElementById('uptime-val').innerText = server.uptime;
-                document.getElementById('status-text').innerText = `Status: ${server.STATUS}`;
-
-                // Update Status Indicator Light
-                const indicator = document.getElementById('status-indicator');
-                if(server.STATUS.toLowerCase() === 'online') {
-                    indicator.className = "w-4 h-4 rounded-full bg-green-500 shadow-[0_0_12px_#22c55e]";
-                } else {
-                    indicator.className = "w-4 h-4 rounded-full bg-red-500 shadow-[0_0_12px_#ef4444]";
-                }
-
-                // Trigger Pulse
-                triggerVisualPulse();
-                if(isRunning) {
-                    synth.triggerAttackRelease("C1", "8n");
-                }
-
-            } catch (error) {
-                console.error("Failed to fetch server data:", error);
-                document.getElementById('status-text').innerText = "CONNECTION LOST";
-            }
-        }
-
-        function triggerVisualPulse() {
-            const heart = document.getElementById('heart-svg');
-            const ring = document.getElementById('ring');
+            const statusIndicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
             
-            // Heart jump
-            heart.style.transform = "scale(1.3)";
-            setTimeout(() => heart.style.transform = "scale(1)", 150);
+            // --- TIME LOGIC ---
+            const currentTime = Date.now();
+            const lastHeartbeat = parseInt(server.HARTHBEAT);
+            const timeDiff = currentTime - lastHeartbeat; 
+            
+            // --- STATUS LOGIC ---
+            let isAlive = false;
+            let displayStatus = "";
 
-            // Ring expansion
-            ring.classList.remove('pulse-animation');
-            void ring.offsetWidth; // Trigger reflow to restart animation
-            ring.classList.add('pulse-animation');
-        }
-
-        document.getElementById('start-btn').addEventListener('click', async () => {
-            if (!isRunning) {
-                await Tone.start();
-                isRunning = true;
-                document.getElementById('start-btn').innerText = "Stop Monitoring";
-                document.getElementById('start-btn').classList.replace('bg-purple-600', 'bg-red-900/50');
-                
-                // Start polling every 2 seconds
-                setInterval(updateMonitor, 2000);
-                updateMonitor();
+            if (timeDiff > 10000) { // Older than 10 seconds
+                displayStatus = "OFFLINE (Connection Lost)";
+                isAlive = false;
+            } else if (server.STATUS.toLowerCase() === 'maintenance') {
+                displayStatus = "OFFLINE (Maintenance)";
+                isAlive = false;
+            } else if (server.STATUS.toLowerCase() === 'online') {
+                displayStatus = "SYSTEM ONLINE";
+                isAlive = true;
             } else {
-                location.reload(); // Simplest way to stop the loops
+                displayStatus = "SYSTEM OFFLINE";
+                isAlive = false;
             }
-        });
-    </script>
+
+            // Update UI
+            statusText.innerText = displayStatus;
+            document.getElementById('temp-val').innerText = server.currenttemp;
+            document.getElementById('power-val').innerText = server.powerconcumptionperH;
+            document.getElementById('uptime-val').innerText = server.uptime;
+
+            if (isAlive) {
+                statusIndicator.className = "w-4 h-4 rounded-full bg-green-500 shadow-[0_0_12px_#22c55e]";
+                triggerVisualPulse();
+                if (isRunning) synth.triggerAttackRelease("C1", "8n");
+            } else {
+                statusIndicator.className = "w-4 h-4 rounded-full bg-red-600 shadow-[0_0_12px_#dc2626]";
+                // Stop the heart from jumping if offline
+                document.getElementById('heart-svg').style.transform = "scale(1)";
+            }
+
+        } catch (error) {
+            document.getElementById('status-text').innerText = "API ERROR";
+        }
+    }
+
+    function triggerVisualPulse() {
+        const heart = document.getElementById('heart-svg');
+        heart.style.transform = "scale(1.3)";
+        setTimeout(() => heart.style.transform = "scale(1)", 150);
+    }
+
+    document.getElementById('start-btn').addEventListener('click', async () => {
+        if (!isRunning) {
+            await Tone.start();
+            isRunning = true;
+            document.getElementById('start-btn').innerText = "Stop Monitor";
+            setInterval(updateMonitor, 2000); // Check API every 2 seconds
+            updateMonitor();
+        } else {
+            location.reload();
+        }
+    });
+</script>
 </body>
 </html>
