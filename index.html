@@ -3,163 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Heartbeat Monitor</title>
+    <title>Enterprise Server Monitor</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        body { background-color: #1a1625; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; }
+        .glass { background: rgba(43, 33, 51, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(90, 62, 116, 0.5); }
+        .status-glow-green { box-shadow: 0 0 20px rgba(34, 197, 94, 0.3); border-color: #22c55e; }
+        .status-glow-red { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); border-color: #ef4444; }
+        .status-glow-blue { box-shadow: 0 0 20px rgba(59, 130, 246, 0.3); border-color: #3b82f6; }
         
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #2b2133;
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
         }
-
-        #app-container {
-            width: 100%;
-            max-width: 420px;
-            border-radius: 1.5rem;
-            border: 1px solid #5a3e74;
-            background-color: #3b2d41;
-            padding: 2rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-        }
-
-        .heart-icon {
-            transition: transform 0.1s ease-in-out;
-        }
-
-        .pulse-animation {
-            animation: pulse-ring 1.2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
-        }
-
-        @keyframes pulse-ring {
-            0% { transform: scale(.33); }
-            80%, 100% { opacity: 0; }
-        }
-
-        .data-value {
-            font-family: 'JetBrains Mono', monospace;
-            color: #c084fc;
+        .monitor-screen::after {
+            content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+            background: rgba(255, 255, 255, 0.05); animation: scanline 4s linear infinite;
         }
     </style>
 </head>
-<body>
+<body class="flex items-center justify-center min-height-screen p-4">
 
-    <div id="app-container">
-        <div class="flex items-center justify-between mb-8">
+    <div id="app-container" class="glass w-full max-width-md rounded-2xl p-6 relative overflow-hidden monitor-screen">
+        <div class="flex justify-between items-start mb-8">
             <div>
-                <h1 class="text-2xl font-bold tracking-tight">System Node 01</h1>
-                <p id="status-text" class="text-xs text-purple-300 uppercase tracking-widest mt-1">Fetching Data...</p>
+                <h2 class="text-gray-400 text-xs font-bold uppercase tracking-tighter">Primary Node</h2>
+                <h1 id="node-id" class="text-xl font-bold">CORE-01</h1>
             </div>
-            <div id="status-indicator" class="w-4 h-4 rounded-full bg-gray-500 transition-colors duration-500"></div>
+            <div id="icon-container" class="p-3 rounded-xl bg-gray-800/50">
+                </div>
         </div>
 
-        <div class="relative flex items-center justify-center py-10 mb-6">
-            <div id="ring" class="absolute w-24 h-24 rounded-full border-4 border-purple-500 opacity-0"></div>
-            <svg id="heart-svg" class="w-16 h-16 text-red-500 heart-icon" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-            </svg>
+        <div class="flex flex-col items-center py-6">
+            <div class="relative w-full h-24 mb-4 flex items-center justify-center">
+                <svg viewBox="0 0 100 20" class="w-full h-full text-green-500 opacity-20 absolute">
+                    <path d="M0 10 L30 10 L35 2 L45 18 L50 10 L100 10" fill="none" stroke="currentColor" stroke-width="0.5" />
+                </svg>
+                <div id="pulse-wave" class="text-4xl font-bold tracking-widest transition-all duration-300">
+                    <span id="display-status">INITIALIZING</span>
+                </div>
+            </div>
+            <p id="latency-text" class="text-[10px] text-gray-500 uppercase italic">Last Sync: --ms ago</p>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
-            <div class="bg-[#2b2133] p-4 rounded-xl border border-[#5a3e74]">
-                <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Temperature</p>
-                <p id="temp-val" class="data-value text-lg">--°C</p>
+        <div class="grid grid-cols-2 gap-3 mt-4">
+            <div class="bg-black/20 p-4 rounded-lg border border-white/5">
+                <span class="block text-[10px] text-gray-500 mb-1">THERMAL</span>
+                <span id="temp-val" class="text-lg font-bold">--°C</span>
             </div>
-            <div class="bg-[#2b2133] p-4 rounded-xl border border-[#5a3e74]">
-                <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Consumption</p>
-                <p id="power-val" class="data-value text-lg">--W</p>
+            <div class="bg-black/20 p-4 rounded-lg border border-white/5">
+                <span class="block text-[10px] text-gray-500 mb-1">LOAD</span>
+                <span id="power-val" class="text-lg font-bold">--W</span>
             </div>
-            <div class="bg-[#2b2133] p-4 rounded-xl border border-[#5a3e74] col-span-2">
-                <p class="text-[10px] text-gray-400 uppercase font-bold mb-1">Uptime</p>
-                <p id="uptime-val" class="data-value text-lg">00:00:00</p>
+            <div class="bg-black/20 p-4 rounded-lg border border-white/5 col-span-2">
+                <span class="block text-[10px] text-gray-500 mb-1">UPTIME</span>
+                <span id="uptime-val" class="text-lg font-bold">00:00:00</span>
             </div>
         </div>
-        
-        <button id="start-btn" class="mt-8 w-full py-3 bg-purple-600 hover:bg-purple-500 rounded-xl font-bold transition-all transform active:scale-95 shadow-lg">
-            Initialize Monitor
+
+        <button id="start-btn" class="mt-8 w-full py-4 border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 font-bold rounded-lg transition-all">
+            ENGAGE MONITORING
         </button>
     </div>
 
-    <script>
+<script>
     const API_URL = 'https://689cc60cce755fe69786fca8.mockapi.io/serverinfo';
-    const synth = new Tone.MembraneSynth().toDestination();
+    const synth = new Tone.MembraneSynth({ volume: -10 }).toDestination();
     let isRunning = false;
+
+    // SVG Icon Templates
+    const ICONS = {
+        ONLINE: `<svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>`,
+        LOST: `<svg class="w-6 h-6 text-orange-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`,
+        MAINTENANCE: `<svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>`,
+        OFFLINE: `<svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>`
+    };
 
     async function updateMonitor() {
         try {
             const response = await fetch(API_URL);
             const data = await response.json();
             const server = data[0];
-
-            const statusIndicator = document.getElementById('status-indicator');
-            const statusText = document.getElementById('status-text');
             
-            // --- TIME LOGIC ---
-            const currentTime = Date.now();
-            const lastHeartbeat = parseInt(server.HARTHBEAT);
-            const timeDiff = currentTime - lastHeartbeat; 
-            
-            // --- STATUS LOGIC ---
-            let isAlive = false;
-            let displayStatus = "";
+            const container = document.getElementById('app-container');
+            const iconDiv = document.getElementById('icon-container');
+            const statusLabel = document.getElementById('display-status');
+            const timeDiff = Date.now() - parseInt(server.HARTHBEAT);
 
-            if (timeDiff > 10000) { // Older than 10 seconds
-                displayStatus = "OFFLINE (Connection Lost)";
-                isAlive = false;
-            } else if (server.STATUS.toLowerCase() === 'maintenance') {
-                displayStatus = "OFFLINE (Maintenance)";
-                isAlive = false;
-            } else if (server.STATUS.toLowerCase() === 'online') {
-                displayStatus = "SYSTEM ONLINE";
-                isAlive = true;
-            } else {
-                displayStatus = "SYSTEM OFFLINE";
-                isAlive = false;
-            }
-
-            // Update UI
-            statusText.innerText = displayStatus;
+            document.getElementById('latency-text').innerText = `Last Sync: ${timeDiff}ms ago`;
             document.getElementById('temp-val').innerText = server.currenttemp;
             document.getElementById('power-val').innerText = server.powerconcumptionperH;
             document.getElementById('uptime-val').innerText = server.uptime;
 
-            if (isAlive) {
-                statusIndicator.className = "w-4 h-4 rounded-full bg-green-500 shadow-[0_0_12px_#22c55e]";
-                triggerVisualPulse();
-                if (isRunning) synth.triggerAttackRelease("C1", "8n");
+            // --- Reset Classes ---
+            container.className = "glass w-full max-width-md rounded-2xl p-6 relative overflow-hidden monitor-screen";
+            
+            // --- Logic Engine ---
+            if (timeDiff > 10000) {
+                statusLabel.innerText = "NO PULSE";
+                iconDiv.innerHTML = ICONS.LOST;
+                container.classList.add('status-glow-red');
+            } else if (server.STATUS.toLowerCase() === 'maintenance') {
+                statusLabel.innerText = "MAINTENANCE";
+                iconDiv.innerHTML = ICONS.MAINTENANCE;
+                container.classList.add('status-glow-blue');
+            } else if (server.STATUS.toLowerCase() === 'online') {
+                statusLabel.innerText = "STABLE";
+                iconDiv.innerHTML = ICONS.ONLINE;
+                container.classList.add('status-glow-green');
+                if(isRunning) {
+                    synth.triggerAttackRelease("G1", "32n");
+                    // Visual "Thump" effect
+                    statusLabel.style.transform = "scale(1.1)";
+                    setTimeout(() => statusLabel.style.transform = "scale(1)", 100);
+                }
             } else {
-                statusIndicator.className = "w-4 h-4 rounded-full bg-red-600 shadow-[0_0_12px_#dc2626]";
-                // Stop the heart from jumping if offline
-                document.getElementById('heart-svg').style.transform = "scale(1)";
+                statusLabel.innerText = "OFFLINE";
+                iconDiv.innerHTML = ICONS.OFFLINE;
+                container.classList.add('status-glow-red');
             }
 
-        } catch (error) {
-            document.getElementById('status-text').innerText = "API ERROR";
+        } catch (e) {
+            document.getElementById('display-status').innerText = "DATA ERROR";
         }
-    }
-
-    function triggerVisualPulse() {
-        const heart = document.getElementById('heart-svg');
-        heart.style.transform = "scale(1.3)";
-        setTimeout(() => heart.style.transform = "scale(1)", 150);
     }
 
     document.getElementById('start-btn').addEventListener('click', async () => {
         if (!isRunning) {
             await Tone.start();
             isRunning = true;
-            document.getElementById('start-btn').innerText = "Stop Monitor";
-            setInterval(updateMonitor, 2000); // Check API every 2 seconds
+            document.getElementById('start-btn').innerText = "MONITORING ACTIVE";
+            setInterval(updateMonitor, 2000);
             updateMonitor();
-        } else {
-            location.reload();
         }
     });
 </script>
