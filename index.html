@@ -3,62 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enterprise Node Monitor v3.2</title>
+    <title>Enterprise Node Monitor v3.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
         body { background-color: #0f0c14; color: #e2e8f0; font-family: 'JetBrains Mono', monospace; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
-        .glass { background: rgba(30, 25, 35, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(139, 92, 246, 0.2); }
-        .glow-green { border-color: #22c55e; box-shadow: 0 0 20px rgba(34, 197, 94, 0.2); }
-        .glow-blue { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.2); }
-        .glow-red { border-color: #ef4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.2); }
-        .alarm-active { animation: critical-pulse 1.5s infinite; border-color: #ef4444 !important; }
-        @keyframes critical-pulse { 0%, 100% { background-color: rgba(30, 25, 35, 0.95); } 50% { background-color: rgba(60, 20, 20, 1); } }
-        .btn-toggle { font-size: 10px; font-weight: bold; text-transform: uppercase; cursor: pointer; transition: opacity 0.2s; }
-        .btn-toggle:hover { opacity: 0.8; }
+        .glass { background: rgba(30, 25, 35, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(139, 92, 246, 0.2); transition: all 0.5s ease; }
+        .glow-green { border-color: #22c55e; box-shadow: 0 0 20px rgba(34, 197, 94, 0.1); }
+        .glow-blue { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.1); }
+        .glow-red { border-color: #ef4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.1); }
+        .alarm-active { animation: critical-pulse 2s infinite; border-color: #ef4444 !important; }
+        @keyframes critical-pulse { 0%, 100% { background-color: rgba(30, 25, 35, 0.95); } 50% { background-color: rgba(80, 20, 20, 1); } }
+        .btn-toggle { font-size: 10px; font-weight: bold; text-transform: uppercase; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="app-container" class="glass w-full max-w-md rounded-3xl p-8 relative overflow-hidden transition-all duration-500">
+    <div id="app-container" class="glass w-full max-w-md rounded-3xl p-8 relative overflow-hidden">
         <div class="flex justify-between items-start mb-10">
             <div>
-                <p class="text-purple-500 text-[10px] font-bold uppercase tracking-[0.3em] mb-1">System Watchdog</p>
+                <p class="text-purple-500 text-[10px] font-bold uppercase tracking-[0.3em] mb-1">Watchdog System</p>
                 <h1 class="text-2xl font-bold tracking-tighter">NODE-01</h1>
             </div>
             <div id="icon-container" class="p-3 rounded-2xl bg-white/5 border border-white/10"></div>
         </div>
 
         <div class="flex flex-col items-center py-4">
-            <div id="display-status" class="text-4xl font-black tracking-tighter transition-all duration-150">READY</div>
-            <div id="sync-timer" class="text-[9px] text-gray-500 mt-2 font-bold uppercase tracking-widest">Awaiting Initialization...</div>
+            <div id="display-status" class="text-4xl font-black tracking-tighter">INITIALIZING</div>
+            <div id="sync-timer" class="text-[9px] text-gray-500 mt-2 font-bold uppercase tracking-widest">Checking Link...</div>
         </div>
 
         <div class="grid grid-cols-2 gap-4 mt-8">
             <div class="bg-black/30 p-4 rounded-2xl border border-white/5">
                 <span class="text-[9px] text-gray-400 font-bold uppercase block mb-1">Temp</span>
-                <span id="temp-val" class="text-xl font-bold">--°C</span>
+                <span id="temp-val" class="text-xl font-bold tracking-tight">--°C</span>
             </div>
             <div class="bg-black/30 p-4 rounded-2xl border border-white/5">
                 <span class="text-[9px] text-gray-400 font-bold uppercase block mb-1">Power</span>
-                <span id="power-val" class="text-xl font-bold">--W</span>
+                <span id="power-val" class="text-xl font-bold tracking-tight">--W</span>
             </div>
-            <div class="bg-black/30 p-4 rounded-2xl border border-white/5 col-span-2">
-                <span class="text-[9px] text-gray-400 font-bold uppercase block mb-1">Uptime</span>
-                <span id="uptime-val" class="text-xl font-bold text-blue-400">00:00:00</span>
+            <div class="bg-black/30 p-4 rounded-2xl border border-white/5 col-span-2 text-center">
+                <span class="text-[9px] text-gray-400 font-bold uppercase block mb-1">Server Uptime</span>
+                <span id="uptime-val" class="text-xl font-bold text-blue-400 tracking-tight">00:00:00</span>
             </div>
         </div>
 
-        <button id="start-btn" class="mt-10 w-full py-4 bg-purple-600/20 border border-purple-500/50 text-white font-bold rounded-2xl uppercase text-xs tracking-[0.2em]">Start Monitor</button>
+        <button id="start-btn" class="mt-10 w-full py-4 bg-white/5 border border-white/10 text-white font-bold rounded-2xl uppercase text-xs tracking-[0.2em] hover:bg-white/10 transition-all">Engage Monitor</button>
         
-        <div class="mt-6 space-y-2 border-t border-white/5 pt-4">
+        <div class="mt-6 space-y-3 border-t border-white/5 pt-4">
             <div class="flex justify-between px-2">
-                <span class="text-[9px] text-gray-500 font-bold uppercase">Heartbeat Sound</span>
+                <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Pulse Sound</span>
                 <button id="heart-toggle" class="btn-toggle text-red-500">[ Off ]</button>
             </div>
             <div class="flex justify-between px-2">
-                <span class="text-[9px] text-gray-500 font-bold uppercase">Emergency Alarm</span>
+                <span class="text-[9px] text-gray-500 font-bold uppercase tracking-widest">Emergency Alarm</span>
                 <button id="alarm-toggle" class="btn-toggle text-red-500">[ Muted ]</button>
             </div>
         </div>
@@ -67,7 +66,7 @@
 <script>
     const API_URL = 'https://689cc60cce755fe69786fca8.mockapi.io/serverinfo';
     
-    const heartbeatSynth = new Tone.MembraneSynth({ volume: -15 }).toDestination();
+    const pulseSynth = new Tone.MembraneSynth({ volume: -15 }).toDestination();
     const alarmOsc = new Tone.Oscillator(800, "square").toDestination();
 
     let isRunning = false;
@@ -81,17 +80,17 @@
         INFO: `<svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`
     };
 
-    function playSonarAlarm(start) {
-        if (start && alarmArmed && !alarmInterval) {
+    function triggerAlarm(active) {
+        if (active && alarmArmed && !alarmInterval) {
             alarmInterval = setInterval(() => {
                 alarmOsc.frequency.value = 800;
-                alarmOsc.start().stop("+0.1");
+                alarmOsc.start().stop("+0.15");
                 setTimeout(() => {
                     alarmOsc.frequency.value = 600;
-                    alarmOsc.start().stop("+0.1");
+                    alarmOsc.start().stop("+0.15");
                 }, 200);
-            }, 1000);
-        } else if (!start) {
+            }, 1200);
+        } else if (!active) {
             clearInterval(alarmInterval);
             alarmInterval = null;
         }
@@ -105,23 +104,28 @@
             const card = document.getElementById('app-container');
             const statusLabel = document.getElementById('display-status');
             const iconBox = document.getElementById('icon-container');
+            
+            // --- TIME CALCULATIONS ---
             const timeDiff = Date.now() - parseInt(server.HARTHBEAT);
             const statusType = server.STATUS.toLowerCase();
 
             document.getElementById('temp-val').innerText = server.currenttemp;
             document.getElementById('power-val').innerText = server.powerconcumptionperH;
             document.getElementById('uptime-val').innerText = server.uptime;
-            document.getElementById('sync-timer').innerText = `Pulse Offset: ${timeDiff}ms`;
+            document.getElementById('sync-timer').innerText = `Pulse Lag: ${Math.floor(timeDiff/1000)}s`;
 
-            if (timeDiff > 10000) {
+            // 1. NO PULSE - Only if over 30 seconds
+            if (timeDiff > 30000) { 
                 statusLabel.innerText = "NO PULSE";
-                statusLabel.className = "text-red-500 font-black tracking-tighter mb-2";
+                statusLabel.className = "text-red-500 font-black tracking-tighter transition-all duration-200";
                 iconBox.innerHTML = ICONS.CRITICAL;
                 card.className = "glass w-full max-w-md rounded-3xl p-8 relative overflow-hidden alarm-active";
-                playSonarAlarm(true);
+                triggerAlarm(true);
             } 
+            // 2. Normal States
             else {
-                playSonarAlarm(false);
+                triggerAlarm(false); // Immediate silence if pulse is found
+                
                 if (statusType === 'maintenance') {
                     statusLabel.innerText = "MAINTENANCE";
                     statusLabel.className = "text-blue-400 font-black tracking-tighter";
@@ -134,23 +138,23 @@
                     iconBox.innerHTML = ICONS.INFO;
                     card.className = "glass w-full max-w-md rounded-3xl p-8 relative overflow-hidden glow-red";
                 }
-                else if (statusType === 'online') {
-                    statusLabel.innerText = "ONLINE";
+                else {
+                    statusLabel.innerText = "STABLE";
                     statusLabel.className = "text-green-400 font-black tracking-tighter";
                     iconBox.innerHTML = ICONS.ONLINE;
                     card.className = "glass w-full max-w-md rounded-3xl p-8 relative overflow-hidden glow-green";
-                    if(isRunning && heartSoundEnabled) heartbeatSynth.triggerAttackRelease("C1", "32n");
+                    if(isRunning && heartSoundEnabled) pulseSynth.triggerAttackRelease("C1", "32n");
                 }
             }
-        } catch (e) { document.getElementById('display-status').innerText = "API ERROR"; }
+        } catch (e) { document.getElementById('display-status').innerText = "LINK ERROR"; }
     }
 
     document.getElementById('start-btn').addEventListener('click', async () => {
         if (!isRunning) {
             await Tone.start();
             isRunning = true;
-            document.getElementById('start-btn').innerText = "MONITORING ACTIVE";
-            setInterval(updateMonitor, 2000);
+            document.getElementById('start-btn').innerText = "MONITOR ACTIVE";
+            setInterval(updateMonitor, 3000); // Check every 3 seconds
             updateMonitor();
         }
     });
